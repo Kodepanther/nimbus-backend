@@ -21,21 +21,13 @@ pr:
 
 variables:
   nodeVersion: '18.x'
-
-  # Development environment
   devWebAppName: 'nimbus-notes-backend-dev'
   devResourceGroup: 'rg-nimbus-dev'
-
-  # Staging environment
   stagingWebAppName: 'landing-page-backend-staging'
   stagingResourceGroup: 'landing-page-staging-rg'
-
   workingDirectory: '$(System.DefaultWorkingDirectory)'
 
 stages:
-# ========================================
-# BUILD STAGE
-# ========================================
 - stage: Build
   displayName: 'Build and Test'
   jobs:
@@ -43,7 +35,6 @@ stages:
       displayName: 'Build Application'
       pool:
         name: 'SandboxAgent'
-
       steps:
         - task: NodeTool@0
           displayName: 'Install Node.js $(nodeVersion)'
@@ -51,25 +42,25 @@ stages:
             versionSpec: $(nodeVersion)
 
         - script: |
-            echo "📦 Installing dependencies..."
+            echo 📦 Installing dependencies...
             npm ci
           displayName: 'npm install'
           workingDirectory: $(workingDirectory)
 
         - script: |
-            echo "🧪 Running tests..."
-            # npm test (uncomment when you add tests)
-            echo "No tests configured yet"
+            echo 🧪 Running tests...
+            REM npm test (uncomment when you add tests)
+            echo No tests configured yet
           displayName: 'Run Tests'
           workingDirectory: $(workingDirectory)
           continueOnError: true
 
         - script: |
-            echo "📋 Application Information:"
-            echo "Node Version: $(node --version)"
-            echo "NPM Version: $(npm --version)"
-            echo "Build ID: $(Build.BuildId)"
-            echo "Branch: $(Build.SourceBranchName)"
+            echo 📋 Application Information:
+            node --version
+            npm --version
+            echo Build ID: $(Build.BuildId)
+            echo Branch: $(Build.SourceBranchName)
           displayName: 'Display Build Info'
 
         - task: ArchiveFiles@2
@@ -89,9 +80,6 @@ stages:
             ArtifactName: 'backend-drop'
             publishLocation: 'Container'
 
-# ========================================
-# DEPLOY TO DEVELOPMENT
-# ========================================
 - stage: DeployDevelopment
   displayName: 'Deploy to Development'
   dependsOn: Build
@@ -134,16 +122,13 @@ stages:
                   startUpCommand: 'npm start'
 
               - script: |
-                  echo "✅ Deployment to Development completed!"
-                  echo "🌐 URL: https://$(devWebAppName).azurewebsites.net"
-                  echo "📊 Testing health endpoint..."
-                  sleep 10
-                  curl -f https://$(devWebAppName).azurewebsites.net/health || echo "Health check failed"
+                  echo ✅ Deployment to Development completed!
+                  echo 🌐 URL: https://$(devWebAppName).azurewebsites.net
+                  echo 📊 Testing health endpoint...
+                  timeout /t 10
+                  powershell -Command "Invoke-WebRequest -Uri https://$(devWebAppName).azurewebsites.net/health -UseBasicParsing"
                 displayName: '✅ Post-Deployment Verification'
 
-# ========================================
-# DEPLOY TO STAGING
-# ========================================
 - stage: DeployStaging
   displayName: 'Deploy to Staging'
   dependsOn: DeployDevelopment
@@ -183,19 +168,19 @@ stages:
                   startUpCommand: 'npm start'
 
               - script: |
-                  echo "✅ Deployment to Staging completed!"
-                  echo "🌐 URL: https://$(stagingWebAppName).azurewebsites.net"
-                  echo "📊 Testing health endpoint..."
-                  sleep 10
-                  curl -f https://$(stagingWebAppName).azurewebsites.net/health || echo "Health check failed"
+                  echo ✅ Deployment to Staging completed!
+                  echo 🌐 URL: https://$(stagingWebAppName).azurewebsites.net
+                  echo 📊 Testing health endpoint...
+                  timeout /t 10
+                  powershell -Command "Invoke-WebRequest -Uri https://$(stagingWebAppName).azurewebsites.net/health -UseBasicParsing"
                 displayName: '✅ Post-Deployment Verification'
 
               - script: |
-                  echo "📝 Staging Deployment Summary:"
-                  echo "================================"
-                  echo "Pull Request: $(System.PullRequest.PullRequestNumber)"
-                  echo "Source Branch: $(System.PullRequest.SourceBranch)"
-                  echo "Target Branch: $(System.PullRequest.TargetBranch)"
-                  echo "Deployed to: https://$(stagingWebAppName).azurewebsites.net"
-                  echo "================================"
+                  echo 📝 Staging Deployment Summary:
+                  echo ========================================
+                  echo Pull Request: $(System.PullRequest.PullRequestNumber)
+                  echo Source Branch: $(System.PullRequest.SourceBranch)
+                  echo Target Branch: $(System.PullRequest.TargetBranch)
+                  echo Deployed to: https://$(stagingWebAppName).azurewebsites.net
+                  echo ========================================
                 displayName: '📝 Display PR Info'

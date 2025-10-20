@@ -29,8 +29,8 @@ variables:
   nodeVersion: '18.x'
   
   # Development environment
-  devWebAppName: 'landing-page-backend-dev'
-  devResourceGroup: 'landing-page-dev-rg'
+  devWebAppName: 'nimbus-notes-backend-dev'
+  devResourceGroup: 'rg-nimbus-dev'
   
   # Staging environment
   stagingWebAppName: 'landing-page-backend-staging'
@@ -117,7 +117,7 @@ stages:
     displayName: 'Deploy to Development Environment'
     environment: 'development'
     pool:
-      vmImage: 'ubuntu-latest'
+      name: 'SandboxAgent'
     strategy:
       runOnce:
         deploy:
@@ -133,7 +133,7 @@ stages:
           - task: AzureWebApp@1
             displayName: '🚀 Deploy to Development Web App'
             inputs:
-              azureSubscription: 'Azure-ServiceConnection'
+              azureSubscription: 'nimbus-azure-connection'
               appType: 'webAppLinux'
               appName: '$(devWebAppName)'
               resourceGroupName: '$(devResourceGroup)'
@@ -167,7 +167,7 @@ stages:
     displayName: 'Deploy to Staging Environment'
     environment: 'staging'
     pool:
-      vmImage: 'ubuntu-latest'
+      name: 'SandboxAgent'
     strategy:
       runOnce:
         deploy:
@@ -183,7 +183,7 @@ stages:
           - task: AzureWebApp@1
             displayName: '🚀 Deploy to Staging Web App'
             inputs:
-              azureSubscription: 'Azure-ServiceConnection'
+              azureSubscription: 'nimbus-azure-connection'
               appType: 'webAppLinux'
               appName: '$(stagingWebAppName)'
               resourceGroupName: '$(stagingResourceGroup)'

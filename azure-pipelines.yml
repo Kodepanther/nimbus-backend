@@ -1,42 +1,35 @@
-# Azure DevOps Pipeline for Backend API
-# Deploys to Development on push to main/develop
-# Deploys to Staging only on Pull Requests to main
-
 trigger:
   branches:
     include:
-    - main
-    - dev
+      - main
+      - dev
   paths:
     exclude:
-    - README.md
-    - .gitignore
-    - '*.md'
+      - README.md
+      - .gitignore
+      - '*.md'
 
-# Trigger on Pull Requests to main branch
 pr:
   branches:
     include:
-    - main
+      - main
   paths:
     exclude:
-    - README.md
-    - .gitignore
-    - '*.md'
+      - README.md
+      - .gitignore
+      - '*.md'
 
 variables:
-  # Node.js version
   nodeVersion: '18.x'
-  
+
   # Development environment
   devWebAppName: 'nimbus-notes-backend-dev'
   devResourceGroup: 'rg-nimbus-dev'
-  
+
   # Staging environment
   stagingWebAppName: 'landing-page-backend-staging'
   stagingResourceGroup: 'landing-page-staging-rg'
-  
-  # Build variables
+
   workingDirectory: '$(System.DefaultWorkingDirectory)'
 
 stages:
@@ -46,59 +39,58 @@ stages:
 - stage: Build
   displayName: 'Build and Test'
   jobs:
-  - job: BuildJob
-    displayName: 'Build Application'
-    pool:
-      name: 'SandboxAgent'
-    
-    steps:
-    - task: NodeTool@0
-      displayName: 'Install Node.js $(nodeVersion)'
-      inputs:
-        versionSpec: $(nodeVersion)
-    
-    - script: |
-        echo "📦 Installing dependencies..."
-        npm ci
-      displayName: 'npm install'
-      workingDirectory: $(workingDirectory)
-    
-    - script: |
-        echo "🧪 Running tests..."
-        # npm test (uncomment when you add tests)
-        echo "No tests configured yet"
-      displayName: 'Run Tests'
-      workingDirectory: $(workingDirectory)
-      continueOnError: true
-    
-    - script: |
-        echo "📋 Application Information:"
-        echo "Node Version: $(node --version)"
-        echo "NPM Version: $(npm --version)"
-        echo "Build ID: $(Build.BuildId)"
-        echo "Branch: $(Build.SourceBranchName)"
-      displayName: 'Display Build Info'
-    
-    - task: ArchiveFiles@2
-      displayName: '📦 Create Deployment Package'
-      inputs:
-        rootFolderOrFile: '$(workingDirectory)'
-        includeRootFolder: false
-        archiveType: 'zip'
-        archiveFile: '$(Build.ArtifactStagingDirectory)/backend-$(Build.BuildId).zip'
-        replaceExistingArchive: true
-        verbose: true
-    
-    - task: PublishBuildArtifacts@1
-      displayName: '📤 Publish Build Artifact'
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-        ArtifactName: 'backend-drop'
-        publishLocation: 'Container'
+    - job: BuildJob
+      displayName: 'Build Application'
+      pool:
+        name: 'SandboxAgent'
+
+      steps:
+        - task: NodeTool@0
+          displayName: 'Install Node.js $(nodeVersion)'
+          inputs:
+            versionSpec: $(nodeVersion)
+
+        - script: |
+            echo "📦 Installing dependencies..."
+            npm ci
+          displayName: 'npm install'
+          workingDirectory: $(workingDirectory)
+
+        - script: |
+            echo "🧪 Running tests..."
+            # npm test (uncomment when you add tests)
+            echo "No tests configured yet"
+          displayName: 'Run Tests'
+          workingDirectory: $(workingDirectory)
+          continueOnError: true
+
+        - script: |
+            echo "📋 Application Information:"
+            echo "Node Version: $(node --version)"
+            echo "NPM Version: $(npm --version)"
+            echo "Build ID: $(Build.BuildId)"
+            echo "Branch: $(Build.SourceBranchName)"
+          displayName: 'Display Build Info'
+
+        - task: ArchiveFiles@2
+          displayName: '📦 Create Deployment Package'
+          inputs:
+            rootFolderOrFile: '$(workingDirectory)'
+            includeRootFolder: false
+            archiveType: 'zip'
+            archiveFile: '$(Build.ArtifactStagingDirectory)/backend-$(Build.BuildId).zip'
+            replaceExistingArchive: true
+            verbose: true
+
+        - task: PublishBuildArtifacts@1
+          displayName: '📤 Publish Build Artifact'
+          inputs:
+            PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+            ArtifactName: 'backend-drop'
+            publishLocation: 'Container'
 
 # ========================================
 # DEPLOY TO DEVELOPMENT
-# Triggers on push to main or develop branches
 # ========================================
 - stage: DeployDevelopment
   displayName: 'Deploy to Development'
@@ -109,53 +101,52 @@ stages:
       eq(variables['Build.Reason'], 'IndividualCI'),
       or(
         eq(variables['Build.SourceBranchName'], 'main'),
-        eq(variables['Build.SourceBranchName'], 'develop')
+        eq(variables['Build.SourceBranchName'], 'dev')
       )
     )
   jobs:
-  - deployment: DeployDev
-    displayName: 'Deploy to Development Environment'
-    environment: 'development'
-    pool:
-      name: 'SandboxAgent'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: DownloadBuildArtifacts@1
-            displayName: '⬇️ Download Build Artifact'
-            inputs:
-              buildType: 'current'
-              downloadType: 'single'
-              artifactName: 'backend-drop'
-              downloadPath: '$(System.ArtifactsDirectory)'
-          
-          - task: AzureWebApp@1
-            displayName: '🚀 Deploy to Development Web App'
-            inputs:
-              azureSubscription: 'nimbus-azure-connection'
-              appType: 'webAppLinux'
-              appName: '$(devWebAppName)'
-              resourceGroupName: '$(devResourceGroup)'
-              package: '$(System.ArtifactsDirectory)/backend-drop/backend-$(Build.BuildId).zip'
-              runtimeStack: 'NODE|18-lts'
-              startUpCommand: 'npm start'
-          
-          - script: |
-              echo "✅ Deployment to Development completed!"
-              echo "🌐 URL: https://$(devWebAppName).azurewebsites.net"
-              echo "📊 Testing health endpoint..."
-              sleep 10
-              curl -f https://$(devWebAppName).azurewebsites.net/health || echo "Health check failed"
-            displayName: '✅ Post-Deployment Verification'
+    - deployment: DeployDev
+      displayName: 'Deploy to Development Environment'
+      environment: 'development'
+      pool:
+        name: 'SandboxAgent'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: DownloadBuildArtifacts@1
+                displayName: '⬇️ Download Build Artifact'
+                inputs:
+                  buildType: 'current'
+                  downloadType: 'single'
+                  artifactName: 'backend-drop'
+                  downloadPath: '$(System.ArtifactsDirectory)'
+
+              - task: AzureWebApp@1
+                displayName: '🚀 Deploy to Development Web App'
+                inputs:
+                  azureSubscription: 'nimbus-azure-connection'
+                  appType: 'webAppLinux'
+                  appName: '$(devWebAppName)'
+                  resourceGroupName: '$(devResourceGroup)'
+                  package: '$(System.ArtifactsDirectory)/backend-drop/backend-$(Build.BuildId).zip'
+                  runtimeStack: 'NODE|18-lts'
+                  startUpCommand: 'npm start'
+
+              - script: |
+                  echo "✅ Deployment to Development completed!"
+                  echo "🌐 URL: https://$(devWebAppName).azurewebsites.net"
+                  echo "📊 Testing health endpoint..."
+                  sleep 10
+                  curl -f https://$(devWebAppName).azurewebsites.net/health || echo "Health check failed"
+                displayName: '✅ Post-Deployment Verification'
 
 # ========================================
 # DEPLOY TO STAGING
-# Only triggers on Pull Requests to main branch
 # ========================================
 - stage: DeployStaging
   displayName: 'Deploy to Staging'
-  dependsOn: Build
+  dependsOn: DeployDevelopment
   condition: |
     and(
       succeeded(),
@@ -163,48 +154,48 @@ stages:
       eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/main')
     )
   jobs:
-  - deployment: DeployStaging
-    displayName: 'Deploy to Staging Environment'
-    environment: 'staging'
-    pool:
-      name: 'SandboxAgent'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: DownloadBuildArtifacts@1
-            displayName: '⬇️ Download Build Artifact'
-            inputs:
-              buildType: 'current'
-              downloadType: 'single'
-              artifactName: 'backend-drop'
-              downloadPath: '$(System.ArtifactsDirectory)'
-          
-          - task: AzureWebApp@1
-            displayName: '🚀 Deploy to Staging Web App'
-            inputs:
-              azureSubscription: 'nimbus-azure-connection'
-              appType: 'webAppLinux'
-              appName: '$(stagingWebAppName)'
-              resourceGroupName: '$(stagingResourceGroup)'
-              package: '$(System.ArtifactsDirectory)/backend-drop/backend-$(Build.BuildId).zip'
-              runtimeStack: 'NODE|18-lts'
-              startUpCommand: 'npm start'
-          
-          - script: |
-              echo "✅ Deployment to Staging completed!"
-              echo "🌐 URL: https://$(stagingWebAppName).azurewebsites.net"
-              echo "📊 Testing health endpoint..."
-              sleep 10
-              curl -f https://$(stagingWebAppName).azurewebsites.net/health || echo "Health check failed"
-            displayName: '✅ Post-Deployment Verification'
-          
-          - script: |
-              echo "📝 Staging Deployment Summary:"
-              echo "================================"
-              echo "Pull Request: $(System.PullRequest.PullRequestNumber)"
-              echo "Source Branch: $(System.PullRequest.SourceBranch)"
-              echo "Target Branch: $(System.PullRequest.TargetBranch)"
-              echo "Deployed to: https://$(stagingWebAppName).azurewebsites.net"
-              echo "================================"
-            displayName: '📝 Display PR Info'
+    - deployment: DeployStaging
+      displayName: 'Deploy to Staging Environment'
+      environment: 'staging'
+      pool:
+        name: 'SandboxAgent'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: DownloadBuildArtifacts@1
+                displayName: '⬇️ Download Build Artifact'
+                inputs:
+                  buildType: 'current'
+                  downloadType: 'single'
+                  artifactName: 'backend-drop'
+                  downloadPath: '$(System.ArtifactsDirectory)'
+
+              - task: AzureWebApp@1
+                displayName: '🚀 Deploy to Staging Web App'
+                inputs:
+                  azureSubscription: 'nimbus-azure-connection'
+                  appType: 'webAppLinux'
+                  appName: '$(stagingWebAppName)'
+                  resourceGroupName: '$(stagingResourceGroup)'
+                  package: '$(System.ArtifactsDirectory)/backend-drop/backend-$(Build.BuildId).zip'
+                  runtimeStack: 'NODE|18-lts'
+                  startUpCommand: 'npm start'
+
+              - script: |
+                  echo "✅ Deployment to Staging completed!"
+                  echo "🌐 URL: https://$(stagingWebAppName).azurewebsites.net"
+                  echo "📊 Testing health endpoint..."
+                  sleep 10
+                  curl -f https://$(stagingWebAppName).azurewebsites.net/health || echo "Health check failed"
+                displayName: '✅ Post-Deployment Verification'
+
+              - script: |
+                  echo "📝 Staging Deployment Summary:"
+                  echo "================================"
+                  echo "Pull Request: $(System.PullRequest.PullRequestNumber)"
+                  echo "Source Branch: $(System.PullRequest.SourceBranch)"
+                  echo "Target Branch: $(System.PullRequest.TargetBranch)"
+                  echo "Deployed to: https://$(stagingWebAppName).azurewebsites.net"
+                  echo "================================"
+                displayName: '📝 Display PR Info'

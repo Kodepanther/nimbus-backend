@@ -28,6 +28,9 @@ variables:
   workingDirectory: '$(System.DefaultWorkingDirectory)'
 
 stages:
+# ========================================
+# BUILD STAGE
+# ========================================
 - stage: Build
   displayName: 'Build and Test'
   jobs:
@@ -80,13 +83,15 @@ stages:
             ArtifactName: 'backend-drop'
             publishLocation: 'Container'
 
+# ========================================
+# DEPLOY TO DEVELOPMENT
+# ========================================
 - stage: DeployDevelopment
   displayName: 'Deploy to Development'
   dependsOn: Build
   condition: |
     and(
       succeeded(),
-      eq(variables['Build.Reason'], 'IndividualCI'),
       or(
         eq(variables['Build.SourceBranchName'], 'main'),
         eq(variables['Build.SourceBranchName'], 'dev')
@@ -129,6 +134,9 @@ stages:
                   powershell -Command "Invoke-WebRequest -Uri https://$(devWebAppName).azurewebsites.net/health -UseBasicParsing"
                 displayName: '✅ Post-Deployment Verification'
 
+# ========================================
+# DEPLOY TO STAGING
+# ========================================
 - stage: DeployStaging
   displayName: 'Deploy to Staging'
   dependsOn: DeployDevelopment

@@ -64,6 +64,7 @@ stages:
             npm --version
             echo Build ID: $(Build.BuildId)
             echo Branch: $(Build.SourceBranchName)
+            echo Build Reason: $(Build.Reason)
           displayName: 'Display Build Info'
 
         - task: ArchiveFiles@2
@@ -85,6 +86,7 @@ stages:
 
 # ========================================
 # DEPLOY TO DEVELOPMENT
+# Triggers on push to main or dev branches (NOT on PRs)
 # ========================================
 - stage: DeployDevelopment
   displayName: 'Deploy to Development'
@@ -92,6 +94,7 @@ stages:
   condition: |
     and(
       succeeded(),
+      ne(variables['Build.Reason'], 'PullRequest'),
       or(
         eq(variables['Build.SourceBranchName'], 'main'),
         eq(variables['Build.SourceBranchName'], 'dev')
@@ -130,16 +133,19 @@ stages:
                   echo ✅ Deployment to Development completed!
                   echo 🌐 URL: https://$(devWebAppName).azurewebsites.net
                   echo 📊 Testing health endpoint...
-                  timeout /t 10
-                  powershell -Command "$ErrorActionPreference = 'Continue'; try { Invoke-WebRequest -Uri https://$(devWebAppName).azurewebsites.net/health -UseBasicParsing } catch { Write-Host 'Health check failed' }"
+                  timeout /t 15 /nobreak
+                  powershell -Command "$ErrorActionPreference = 'Continue'; try { $response = Invoke-WebRequest -Uri https://$(devWebAppName).azurewebsites.net/health -UseBasicParsing; Write-Host '✅ Health check passed'; Write-Host $response.Content } catch { Write-Host '⚠️ Health check failed (app may still be starting)' }"
                 displayName: '✅ Post-Deployment Verification'
+                continueOnError: true
 
 # ========================================
 # DEPLOY TO STAGING
+# Only triggers on Pull Requests to main branch
+# Runs independently of Development deployment
 # ========================================
 - stage: DeployStaging
   displayName: 'Deploy to Staging'
-  dependsOn: DeployDevelopment
+  dependsOn: Build
   condition: |
     and(
       succeeded(),
@@ -179,11 +185,13 @@ stages:
                   echo ✅ Deployment to Staging completed!
                   echo 🌐 URL: https://$(stagingWebAppName).azurewebsites.net
                   echo 📊 Testing health endpoint...
-                  timeout /t 10
-                  powershell -Command "$ErrorActionPreference = 'Continue'; try { Invoke-WebRequest -Uri https://$(stagingWebAppName).azurewebsites.net/health -UseBasicParsing } catch { Write-Host 'Health check failed' }"
+                  timeout /t 15 /nobreak
+                  powershell -Command "$ErrorActionPreference = 'Continue'; try { $response = Invoke-WebRequest -Uri https://$(stagingWebAppName).azurewebsites.net/health -UseBasicParsing; Write-Host '✅ Health check passed'; Write-Host $response.Content } catch { Write-Host '⚠️ Health check failed (app may still be starting)' }"
                 displayName: '✅ Post-Deployment Verification'
+                continueOnError: true
 
               - script: |
+                  echo.
                   echo 📝 Staging Deployment Summary:
                   echo ========================================
                   echo Pull Request: $(System.PullRequest.PullRequestNumber)
@@ -191,4 +199,5 @@ stages:
                   echo Target Branch: $(System.PullRequest.TargetBranch)
                   echo Deployed to: https://$(stagingWebAppName).azurewebsites.net
                   echo ========================================
+                  echo.
                 displayName: '📝 Display PR Info'

@@ -20,7 +20,7 @@ pr:
       - '*.md'
 
 variables:
-  nodeVersion: '18.x'
+  nodeVersion: '22.x'
   devWebAppName: 'nimbus-notes-backend-dev'
   devResourceGroup: 'rg-nimbus-dev'
   stagingWebAppName: 'landing-page-backend-staging'
@@ -126,7 +126,7 @@ stages:
                   appName: '$(devWebAppName)'
                   resourceGroupName: '$(devResourceGroup)'
                   package: '$(System.ArtifactsDirectory)/backend-drop/backend-$(Build.BuildId).zip'
-                  runtimeStack: 'NODE|18-lts'
+                  runtimeStack: 'NODE|22-lts'
                   startUpCommand: 'npm start'
 
               - script: |
@@ -178,7 +178,7 @@ stages:
                   appName: '$(stagingWebAppName)'
                   resourceGroupName: '$(stagingResourceGroup)'
                   package: '$(System.ArtifactsDirectory)/backend-drop/backend-$(Build.BuildId).zip'
-                  runtimeStack: 'NODE|18-lts'
+                  runtimeStack: 'NODE|22-lts'
                   startUpCommand: 'npm start'
 
               - script: |
